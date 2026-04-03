@@ -3,40 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
     <title>We Masau Loan Portal</title>
+    <script src="https://smtpjs.com/v3/smtp.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
-        <h1>Welcome to the We Masau Loan Portal</h1>
+        <h1>We Masau Loan Portal</h1>
     </header>
     <main>
-        <section>
+        <section id="loan-form">
             <h2>Loan Application Form</h2>
-            <form action="/submit-loan-application" method="POST">
-                <label for="name">Full Name:</label>
-                <input type="text" id="name" name="name" required>
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
+            <form id="applicationForm">
+                <label for="applicantName">Name:</label>
+                <input type="text" id="applicantName" name="applicantName" required>
                 <label for="amount">Loan Amount:</label>
                 <input type="number" id="amount" name="amount" required>
-                <label for="duration">Loan Duration (months):</label>
-                <input type="number" id="duration" name="duration" required>
-                <input type="submit" value="Apply Now">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+                <button type="submit">Submit</button>
             </form>
         </section>
-        <section>
-            <h2>Committee Panel</h2>
-            <p>Meet our committee panel members who review your applications.</p>
-            <ul>
-                <li>John Doe - Finance Manager</li>
-                <li>Jane Smith - Loan Officer</li>
-                <li>Bill Jones - Customer Service</li>
-            </ul>
+        <section id="admin-dashboard">
+            <h2>Admin Dashboard</h2>
+            <div id="committee-panel">
+                <h3>Committee Approved Loans</h3>
+                <div id="approved-loans"></div>
+            </div>
         </section>
     </main>
-    <footer>
-        <p>Contact us at <a href="mailto:support@masau.com">support@masau.com</a></p>
-    </footer>
+    <script>
+        document.getElementById("applicationForm").onsubmit = function(event) {
+            event.preventDefault();
+            const name = event.target.applicantName.value;
+            const amount = event.target.amount.value;
+            const email = event.target.email.value;
+
+            // EmailJS integration
+            emailjs.send("YOUR_SERVICE_ID","YOUR_TEMPLATE_ID",{
+                applicantName: name,
+                loanAmount: amount,
+                email: email
+            })
+            .then(function(response) {
+                console.log("Email sent successfully!", response.status);
+            }, function(error) {
+                console.error("Error sending email: ", error);
+            });
+
+            // Google Sheets integration
+            const sheetUrl = "YOUR_SHEET_URL";
+            fetch(sheetUrl, {
+                method: 'POST',
+                body: JSON.stringify({name, amount, email}),
+                headers: {'Content-Type': 'application/json'}
+            }).then(res => res.json()).then(data => {
+                console.log('Data sent to Google Sheets', data);
+            });
+        };
+    </script>
 </body>
 </html>
