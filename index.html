@@ -196,7 +196,7 @@
         "amos@wemasau.org"
     ];
     // REPLACE THIS WITH YOUR ACTUAL GOOGLE SHEETS WEB APP URL
-const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbySdzQfiNhMkLdv9rsG6lV4Pk1mKj-6r_tpNKgCqKP4NH4EQLWysEHe0R_nfZXsOtM/exec";
+const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycby34FkwYW5NuC8Di31fLUuz7VizR7FLNmJ7_cPuxgyh7RKA81lsapSwtbcPOxCZKGjm/exec";
     let emailjsReady = false;
     if (EMAIL_CONFIG.PUBLIC_KEY && EMAIL_CONFIG.PUBLIC_KEY !== "fuNbY5M2Bu6uWKglV") {
         try { emailjs.init(EMAIL_CONFIG.PUBLIC_KEY); emailjsReady = true; } catch(e) { console.warn(e); }
@@ -262,40 +262,44 @@ const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbySdzQfiNhMkL
     try {
         const response = await fetch(GOOGLE_SHEETS_URL, {
             method: 'POST',
-            mode: 'cors',               // changed from 'no-cors'
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(appData)
         });
-        const result = await response.text();
-        console.log("Sheet write response:", result);
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${result}`);
+        const result = await response.json();
+        if (!response.ok || result.error) throw new Error(result.error || "HTTP error");
         return true;
     } catch (err) {
         console.error("Add to sheet failed:", err);
         showStatusMsg(`❌ Failed to save to Google Sheets: ${err.message}. Data saved locally only.`, "error");
-        saveAppToLocal(appData); // fallback
+        saveAppToLocal(appData);
         return false;
     }
 }
+    }
+}
     // Update decision (POST with update flag)
-    async function sendUpdateToSheet(rowIndex, updatedFields) {
-        if (usingFallback) {
-            updateLocalStatus(rowIndex, updatedFields);
-            return true;
-        }
-        try {
-            const payload = { update: true, rowIndex: rowIndex, ...updatedFields };
-            await fetch(GOOGLE_SHEETS_URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            return true;
-        } catch (err) {
-            console.error("Update failed:", err);
-            updateLocalStatus(rowIndex, updatedFields);
-            return false;
+    async function sendUpdateToSheet(applicationId, updatedFields) {
+    if (usingFallback) {
+        // fallback: update local storage using the ID (you'll need to map ID to index)
+        console.warn("Update in fallback mode not fully implemented");
+        return false;
+    }
+    try {
+        const payload = { update: true, applicationId: applicationId, ...updatedFields };
+        const response = await fetch(GOOGLE_SHEETS_URL, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Update failed");
+        return true;
+    } catch (err) {
+        console.error("Update failed:", err);
+        return false;
+    }
+}
         }
     }
 
@@ -329,6 +333,7 @@ const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbySdzQfiNhMkL
         if (!application.email) {
             showStatusMsg("❌ Applicant email missing.", "error", statusDivId);
             return false;
+            applicationId: Date.now() + '-' + Math.random().toString(36).substr(2, 8),
         }
         try {
             await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.REPLY_TEMPLATE, {
@@ -361,7 +366,7 @@ const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbySdzQfiNhMkL
     function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
     async function renderAdminList() {
-        const apps = await fetchApplicationsFromSheet();
+        const apps =await sendUpdateToSheet(application.applicationId, updatedFields);
         const container = document.getElementById('applicationsList');
         if (!container) return;
         if (!apps.length) {
