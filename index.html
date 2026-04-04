@@ -179,7 +179,7 @@
         REPLY_TEMPLATE: "template_ujw8qql"
     };
     const ADMIN_EMAIL_RECIPIENTS = [
-        "mmasangwi@gmail.com",
+        "marvinmasangwi@outlook.com",
         "Josephmononga0@gmail.com",
         "emmanuelkusunzi@gmail.com",
         "levie.sezza@gmail.com",
@@ -293,26 +293,33 @@
 
     // ---------- Email functions ----------
     async function notifyAdminViaEmail(application) {
-        if (!emailjsReady) return false;
-        const paramsBase = {
-            applicant_name: application.fullName,
-            applicant_email: application.email,
-            loan_amount: application.loanAmount,
-            loan_type: application.loanType,
-            member_id: application.memberId,
-            purpose: (application.purpose || "").substring(0, 200),
-            submission_date: new Date().toLocaleString()
-        };
-        let successCount = 0;
-        for (const adminEmail of ADMIN_EMAIL_RECIPIENTS) {
-            try {
-                await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.ADMIN_TEMPLATE, { ...paramsBase, to_email: adminEmail });
-                successCount++;
-            } catch (err) { console.error(err); }
-        }
-        return successCount > 0;
+    if (!emailjsReady) return false;
+    
+    // Get the chairman (first in the list) and the rest for BCC
+    const chairmanEmail = ADMIN_EMAIL_RECIPIENTS[0];
+    const bccEmails = ADMIN_EMAIL_RECIPIENTS.slice(1).join(',');
+    
+    const paramsBase = {
+        applicant_name: application.fullName,
+        applicant_email: application.email,
+        loan_amount: application.loanAmount,
+        loan_type: application.loanType,
+        member_id: application.memberId,
+        purpose: (application.purpose || "").substring(0, 200),
+        submission_date: new Date().toLocaleString(),
+        to_email: chairmanEmail,      // primary recipient
+        bcc: bccEmails                // all other members
+    };
+    
+    try {
+        await emailjs.send(EMAIL_CONFIG.SERVICE_ID, EMAIL_CONFIG.ADMIN_TEMPLATE, paramsBase);
+        console.log(`Email sent to chairman (${chairmanEmail}) with BCC to ${bccEmails}`);
+        return true;
+    } catch (err) {
+        console.error("EmailJS send error:", err);
+        return false;
     }
-
+}
     async function sendDecisionEmail(application, decision, adminMessage, statusDivId) {
         if (!emailjsReady) {
             showStatusMsg("❌ EmailJS not ready.", "error", statusDivId);
